@@ -8,90 +8,102 @@ output:
 
 ## Loading and preprocessing the data
 
-```{r loadData, echo = TRUE}
+```{r, echo = TRUE}
 
-data <- read.csv("activity.csv", as.is=TRUE)
-cleanData <- data[complete.cases(data),]
-
+rawData <- read.csv("activity.csv", as.is=TRUE)
+#remove records with missing values 
+cleanData <- rawData[complete.cases(rawData),]
 ```
 
 ## What is mean total number of steps taken per day?
 
-```{r echo=TRUE}
+```{r, echo = TRUE}
 
+#calculate the sum of all steps taken for each day
 data1 <- aggregate(steps ~ date, data=cleanData, sum)
 
-mn <- format(mean(data1$steps),scientific=FALSE, digits = 0 )
-mdn <- median(data1$steps)
-hist(data1$steps, breaks = 20)
+#calculate the mean and median total steps taken per day
+clean_mn <- format(mean(data1$steps),scientific=FALSE, digits=0)
+clean_mdn <- format(median(data1$steps),scientific=FALSE, digits=0)
+hist(data1$steps, breaks = 20, main="Freq Distribution of Total Steps Taken Per Day", xlab="Total Steps Taken Per Day")
 
 ```
 
-### The mean total number of steps taken per day is `r mn`
-### The median total number of steps taken per day is `r mdn`
+### The mean total number of steps taken per day is `r clean_mn` steps
+### The median total number of steps taken per day is `r clean_mdn` steps
 
 
 ## What is the average daily activity pattern?
 
-```{r}
+```{r, echo = TRUE}
 
-# compute mean number of steps taken for each interval across all days
+# compute average number of steps taken for each interval across all days
 data1 <- aggregate(steps ~ interval, cleanData, mean)
+# get the record for the interval with the maximum average steps taken
 recMax <- data1[data1$steps  == max(data1$steps),]
 
- plot(steps ~ interval, data1, type="l")
+plot(steps ~ interval, data1, type="l", main="Average Number of Steps Taken Per Interval Across All Days")
 
 ```
 
-### 5-minute interval `r recMax$interval` has the maximum number of average number of steps with `r recMax$steps` average steps
+### 5-minute interval `r recMax$interval` has the maximum average number of steps taken with `r recMax$steps` steps
 
 ## Imputing missing values
 
 
-```{r}
-numNAs = nrow(data[is.na(data$steps),])
+```{r, echo = TRUE}
 
-# set the NA values to the mean steps take for that interval across all days computed in previous section
+# compute total number of missing values
+numNAs = nrow(rawData[is.na(rawData$steps),])
 
-data1 <- merge(data, aggregate(steps ~ interval, cleanData, mean), by="interval")
+# Replace missing step data for an interval with the average steps taken for that interval across all days (as computed in the previous section)
+
+#merge the average steps taken values into the original raw data for easy use
+data1 <- merge(rawData, aggregate(steps ~ interval, cleanData, mean), by="interval")
+#set missing step values to the mean steps taken for the same interval
 data1[,2] <- ifelse(is.na(data1[,2]), data1[,4],data1[,2])
 
-#massage new data set to equal the original data set but with the missing data filled in
+#massage data set to equal the original data set but with the missing data filled in
+#remove unneeded mean steps taken column merged in above
 data1[,4] = NULL
+#set the name of the steps column back to 'steps'
 names(data1)[2] = "steps"
 
-#Calculate the total number of steps taken each day
+#With imputed values for missing step data, calculate the total number of steps taken each day
 data1 <- aggregate(steps ~ date, data=data1, sum)
 
 imputed_mean <- format(mean(data1$steps),scientific=FALSE, digits=0)
 imputed_median <- format(median(data1$steps),scientific=FALSE,digits=0)
 
-# Create historgram showing the frequency distribution of the total number of steps take per day
-hist(data1$steps, breaks=20)
+#With imputed values for missing step data, create a historgram showing the frequency distribution of the total number of steps taken per day
+hist(data1$steps, breaks=20, main="Freq Distribution of Total Steps Taken Per Day (w/Imputed Values)", xlab="Total Steps Taken Per Day")
 
 ```
-### The number of NAs is `r numNAs`
-### Mean of the total number of steps taken per day with imputed data is `r imputed_mean`, with clean data is `r mn`
-### Mean of the total number of steps taken per day with imputed data is `r imputed_median`, with clean data is `r mdn`
-### There is neglible difference between the estimates without missins data and with imputed  data
+### The number of missing steps taken values is `r numNAs`
+### Mean of the total number of steps taken per day with imputed data is `r imputed_mean` and with clean data is `r clean_mn`
+### Median of the total number of steps taken per day with imputed data is `r imputed_median` and with clean data is `r clean_mdn`
+### There is neglible impact of imputing missing data on the estimates of the total number of steps
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
-```{r}
+```{r, echo = TRUE}
 
-#dataWithoutNA$isWeekDay  <- ifelse(dataWithoutNA$date, true, false)
+
 data1 <- cleanData
 
+# Create new factor variable 'period' with 2 levels = 'weekday' and 'weekend' indicating whether a given data is a weekday or weekend day
 data1$period  <- ifelse(weekdays(as.Date(data1$date)) %in% c('Monday','Tuesday','Wednesday','Thursday','Friday'), 'weekday', 'weekend')
 data1$period <- as.factor(data1$period)
 
+# Compute average number of steps taken for each interval across all days
 data1 <- aggregate(data1$steps, list(data1$interval,data1$period), mean, na.action = na.omit)
 data1 <- setNames(data1,c("interval","period","steps"))
 
+# Make a panel plot containing a time series plot of the sverage number of steps taken per 5 minute interval across all weekend and weekday days
 library(lattice)
 xyplot(steps ~ interval | period, data1, layout = c(1,2), type = "l")
 
 ```
 
-
+### There are noticeable differences in activity patterns between weekdays and weekends
