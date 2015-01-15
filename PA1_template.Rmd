@@ -8,18 +8,90 @@ output:
 
 ## Loading and preprocessing the data
 
+```{r loadData, echo = TRUE}
 
+data <- read.csv("activity.csv", as.is=TRUE)
+cleanData <- data[complete.cases(data),]
+
+```
 
 ## What is mean total number of steps taken per day?
 
+```{r echo=TRUE}
+
+data1 <- aggregate(steps ~ date, data=cleanData, sum)
+
+mn <- format(mean(data1$steps),scientific=FALSE, digits = 0 )
+mdn <- median(data1$steps)
+hist(data1$steps, breaks = 20)
+
+```
+
+### The mean total number of steps taken per day is `r mn`
+### The median total number of steps taken per day is `r mdn`
 
 
 ## What is the average daily activity pattern?
 
+```{r}
 
+# compute mean number of steps taken for each interval across all days
+data1 <- aggregate(steps ~ interval, cleanData, mean)
+recMax <- data1[data1$steps  == max(data1$steps),]
+
+ plot(steps ~ interval, data1, type="l")
+
+```
+
+### 5-minute interval `r recMax$interval` has the maximum number of average number of steps with `r recMax$steps` average steps
 
 ## Imputing missing values
 
 
+```{r}
+numNAs = nrow(data[is.na(data$steps),])
+
+# set the NA values to the mean steps take for that interval across all days computed in previous section
+
+data1 <- merge(data, aggregate(steps ~ interval, cleanData, mean), by="interval")
+data1[,2] <- ifelse(is.na(data1[,2]), data1[,4],data1[,2])
+
+#massage new data set to equal the original data set but with the missing data filled in
+data1[,4] = NULL
+names(data1)[2] = "steps"
+
+#Calculate the total number of steps taken each day
+data1 <- aggregate(steps ~ date, data=data1, sum)
+
+imputed_mean <- format(mean(data1$steps),scientific=FALSE, digits=0)
+imputed_median <- format(median(data1$steps),scientific=FALSE,digits=0)
+
+# Create historgram showing the frequency distribution of the total number of steps take per day
+hist(data1$steps, breaks=20)
+
+```
+### The number of NAs is `r numNAs`
+### Mean of the total number of steps taken per day with imputed data is `r imputed_mean`, with clean data is `r mn`
+### Mean of the total number of steps taken per day with imputed data is `r imputed_median`, with clean data is `r mdn`
+### There is neglible difference between the estimates without missins data and with imputed  data
+
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+
+#dataWithoutNA$isWeekDay  <- ifelse(dataWithoutNA$date, true, false)
+data1 <- cleanData
+
+data1$period  <- ifelse(weekdays(as.Date(data1$date)) %in% c('Monday','Tuesday','Wednesday','Thursday','Friday'), 'weekday', 'weekend')
+data1$period <- as.factor(data1$period)
+
+data1 <- aggregate(data1$steps, list(data1$interval,data1$period), mean, na.action = na.omit)
+data1 <- setNames(data1,c("interval","period","steps"))
+
+library(lattice)
+xyplot(steps ~ interval | period, data1, layout = c(1,2), type = "l")
+
+```
+
+
